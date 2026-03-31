@@ -102,6 +102,9 @@ export const translations = {
   'results.reclassifyFeedback': { pt: 'Reclassificar com correcoes', en: 'Reclassify with corrections', es: 'Reclasificar con correcciones' },
   'results.backAdjust': { pt: 'Voltar e ajustar', en: 'Back and adjust', es: 'Volver y ajustar' },
   'results.reclassify': { pt: 'Reclassificar amostra', en: 'Reclassify sample', es: 'Reclasificar muestra' },
+  'results.loadMore': { pt: 'Carregar mais {count}', en: 'Load {count} more', es: 'Cargar {count} mas' },
+  'results.loadingMore': { pt: 'Carregando...', en: 'Loading...', es: 'Cargando...' },
+  'results.noMore': { pt: 'Todos os produtos ja foram amostrados', en: 'All products have been sampled', es: 'Todos los productos ya fueron muestreados' },
   'results.approve': { pt: 'Aprovar e classificar tudo', en: 'Approve and classify all', es: 'Aprobar y clasificar todo' },
 
   // Results - Processing

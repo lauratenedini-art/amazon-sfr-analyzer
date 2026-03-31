@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, Download, Loader, AlertCircle, CheckCircle2,
   FileDown, RotateCcw, FlaskConical, ThumbsUp, MessageSquare, Send,
+  ChevronDown,
 } from 'lucide-react';
 import { useLang } from '../contexts/LangContext';
 import { classifyProducts } from '../utils/openaiApi';
@@ -10,14 +11,19 @@ import { exportToXLSX, exportToCSV } from '../utils/exportUtils';
 const ROWS_PER_PAGE = 25;
 const SAMPLE_SIZE = 20;
 
-function pickSample(products) {
+function pickSample(products, page = 0) {
   if (products.length <= SAMPLE_SIZE) return products;
   const step = Math.floor(products.length / SAMPLE_SIZE);
   const sample = [];
-  for (let i = 0; i < products.length && sample.length < SAMPLE_SIZE; i += step) {
+  for (let i = page; i < products.length && sample.length < SAMPLE_SIZE; i += step) {
     sample.push(products[i]);
   }
   return sample;
+}
+
+function maxSamplePages(products) {
+  if (products.length <= SAMPLE_SIZE) return 1;
+  return Math.floor(products.length / SAMPLE_SIZE);
 }
 
 export default function ResultsStep({ fileData, columnMapping, clusterLevels, customPrompt, results, onResults, onBack }) {
@@ -31,6 +37,8 @@ export default function ResultsStep({ fileData, columnMapping, clusterLevels, cu
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackHistory, setFeedbackHistory] = useState([]);
+  const [samplePage, setSamplePage] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const hasStarted = useRef(false);
 
   const allProducts = fileData.rows
@@ -46,12 +54,13 @@ export default function ResultsStep({ fileData, columnMapping, clusterLevels, cu
     return full;
   };
 
-  const runSample = async () => {
+  const runSample = async (page = 0) => {
     setPhase('sampling');
     setShowFeedback(false);
     setError('');
+    setSamplePage(page);
     try {
-      const sample = pickSample(allProducts);
+      const sample = pickSample(allProducts, page);
       const classified = await classifyProducts(sample, clusterLevels, buildFullPrompt(), () => {}, langLabel);
       setSampleResults(classified);
       setPhase('validation');
@@ -60,6 +69,23 @@ export default function ResultsStep({ fileData, columnMapping, clusterLevels, cu
       setPhase('error');
     }
   };
+
+  const loadMoreSample = async () => {
+    const nextPage = samplePage + 1;
+    setLoadingMore(true);
+    setSamplePage(nextPage);
+    try {
+      const sample = pickSample(allProducts, nextPage);
+      const classified = await classifyProducts(sample, clusterLevels, buildFullPrompt(), () => {}, langLabel);
+      setSampleResults((prev) => [...(prev || []), ...classified]);
+    } catch (err) {
+      setError(err.message || 'Error');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const hasMoreSamples = samplePage + 1 < maxSamplePages(allProducts);
 
   const runFullProcessing = async () => {
     setPhase('processing');
@@ -143,6 +169,21 @@ export default function ResultsStep({ fileData, columnMapping, clusterLevels, cu
           </div>
         </div>
 
+        <div className="flex justify-center mb-6">
+          {hasMoreSamples ? (
+            <button onClick={loadMoreSample} disabled={loadingMore}
+              className="flex items-center gap-2 px-5 py-2.5 border border-indigo-300 text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition font-medium text-sm disabled:opacity-50">
+              {loadingMore ? (
+                <><Loader className="w-4 h-4 animate-spin" /> {t('results.loadingMore')}</>
+              ) : (
+                <><ChevronDown className="w-4 h-4" /> {t('results.loadMore', { count: SAMPLE_SIZE })}</>
+              )}
+            </button>
+          ) : (
+            <p className="text-xs text-slate-400">{t('results.noMore')}</p>
+          )}
+        </div>
+
         {showFeedback && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
             <div className="flex items-center gap-2 mb-3">
@@ -168,7 +209,7 @@ export default function ResultsStep({ fileData, columnMapping, clusterLevels, cu
                 setFeedbackText('');
                 hasStarted.current = false;
                 setSampleResults(null);
-                runSample();
+                runSample(0);
               }} disabled={!feedbackText.trim()}
                 className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium text-sm disabled:opacity-50">
                 <Send className="w-4 h-4" /> {t('results.reclassifyFeedback')}
@@ -244,7 +285,7 @@ export default function ResultsStep({ fileData, columnMapping, clusterLevels, cu
             <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-800 transition">
               <ArrowLeft className="w-4 h-4" /> {t('common.back')}
             </button>
-            <button onClick={() => { hasStarted.current = false; setSampleResults(null); runSample(); }}
+            <button onClick={() => { hasStarted.current = false; setSampleResults(null); runSample(0); }}
               className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium">
               <RotateCcw className="w-4 h-4" /> {t('results.retry')}
             </button>
