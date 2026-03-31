@@ -1,7 +1,6 @@
 import { lookupEANs } from './eanLookup';
 
 const BATCH_SIZE = 30;
-const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 const NOT_CLASSIFIED = 'Nao classificado';
 
 export async function classifyProducts(products, clusterLevels, customPrompt, onProgress, langLabel) {
@@ -151,7 +150,6 @@ Retorne APENAS um array JSON valido, sem markdown, sem texto extra, no formato:
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${API_KEY}`,
     },
     body: JSON.stringify({
       model: 'gpt-4o-mini',
